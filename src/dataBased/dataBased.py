@@ -181,8 +181,9 @@ class DataBased:
     
     @_connect
     def getRows(self, table:str, 
-                        columnRows:list[tuple]|dict=None, 
-                        exactMatch:bool=True)->list[dict]:
+                columnRows:list[tuple]|dict=None, 
+                exactMatch:bool=True,
+                sortByColumn:str=None)->list[dict]:
         """ Returns rows from table as a list of dictionaries
         where the key-value pairs of the dictionaries are
         column name: row value.
@@ -193,6 +194,8 @@ class DataBased:
         
         :param exactMatch: If False, the rowValue for a give column
         will be matched as a substring.
+        
+        :param sortByColumn: A column name to sort the results by.
         """
         statement = f'select * from {table}'
         matches = []
@@ -201,7 +204,11 @@ class DataBased:
         else:
             self.cursor.execute(f'{statement} where {self._getConditions(columnRows, exactMatch)}')
         matches = self.cursor.fetchall()
-        return [self._getDict(table, match) for match in matches]
+        if not sortByColumn:
+            return [self._getDict(table, match) for match in matches]
+        else:
+            results = [self._getDict(table, match) for match in matches]
+            return sorted(results, key=lambda x: x[sortByColumn])
     
     @_connect
     def delete(self, table:str, columnRows:list[tuple]|dict, exactMatch:bool=True)->int:
@@ -238,7 +245,7 @@ class DataBased:
         
         :param newValue: The new value to insert.
         
-        Return True if successful, False if not."""
+        Returns True if successful, False if not."""
         conditions = self._getConditions(columnRows)
         try: 
             oldValue = self.getRows(table, columnRows, exactMatch=True)[0][columnToUpdate]
@@ -252,6 +259,18 @@ class DataBased:
         except Exception as e:
             self.logger.error(f'Failed to update "{columnToUpdate}" in "{table}" table where {conditions} from "{oldValue}" to "{newValue}"\n{e}')
             return False
+    
+    @_connect
+    def dropTable(self, table:str)->bool:
+        """ Drop a table from the database.
+        
+        Returns True if successful, False if not."""
+        try:
+            self.cursor.execute(f'drop Table {table}')
+            self.logger.info(f'Dropped table "{table}"')
+        except Exception as e:
+            print(e)
+            self.logger.error(f'Failed to drop table "{table}"')
 
 def dataToString(data:list[dict], maxColWidths:int|list[int|None]=None, sortKey:str=None)->str:
     """ Uses tabulate to produce pretty string output
