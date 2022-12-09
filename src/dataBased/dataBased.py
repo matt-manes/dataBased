@@ -1,14 +1,14 @@
 from datetime import datetime
+from functools import wraps
 import logging
 import os
 from pathlib import Path
 import sqlite3
 from tabulate import tabulate
-from functools import wraps
 
 class DataBased:
-    """ Sqli wrapper so queries don't need to be written,
-    except table definitions.\n
+    """ Sqli wrapper so queries don't need to be written except table definitions.
+    
     Supports saving and reading dates as datetime objects."""
     def __init__(self, dbPath:str|Path, loggerEncoding:str='utf-8',
                  loggerMessageFormat:str='{levelname}|-|{asctime}|-|{message}'):
@@ -16,7 +16,8 @@ class DataBased:
         :param dbPath: String or Path object to database file.
         If a relative path is given, it will be relative to the
         current working directory. The log file will be saved to the
-        same directory.\n
+        same directory.
+        
         :param loggerMessageFormat: '{' style format string
         for the logger object."""
         self.dbPath = Path(dbPath)
@@ -35,7 +36,8 @@ class DataBased:
         self.connectionOpen = True
     
     def close(self):
-        """ Save and close connection to db.\n
+        """ Save and close connection to db.
+        
         Call this as soon as you are done using the database if you have
         multiple threads or processes using the same database."""
         if self.connectionOpen:
@@ -68,20 +70,26 @@ class DataBased:
             self.logger.setLevel(logging.INFO)
     
     def _getDict(self, table:str, values:list)->dict:
-        """ Converts the values of a row into a dictionary with column names as keys.\n
-        :param table: The table that values were pulled from.\n
+        """ Converts the values of a row into a dictionary with column names as keys.
+        
+        :param table: The table that values were pulled from.
+        
         :param values: List of values expected to be the same quantity
         and in the same order as the column names of table."""
         return {column:value for column,value in zip(self.getColumnNames(table), values)}
     
     def _getConditions(self, columnRows:list[tuple]|dict, exactMatch:bool=True)->str:
-        """ Builds and returns the conditional portion of a query.\n
+        """ Builds and returns the conditional portion of a query.
+        
         :param columnRows: Can be a list of 2-tuples where each
         tuple is (columnName, rowValue) or a dictionary where
-        keys are column names and values are row values.\n
+        keys are column names and values are row values.
+        
         :param exactMatch: If False, the rowValue for a give column
-        will be matched as a substring.\n
-        Usage e.g.:\n
+        will be matched as a substring.
+        
+        Usage e.g.:
+        
         self.cursor.execute(f'select * from {table} where {conditions}')"""
         if type(columnRows) == dict:
             columnRows = [(k,v) for k,v in columnRows.items()]
@@ -95,7 +103,8 @@ class DataBased:
     
     @_connect
     def createTables(self, tableStatements:list[str]=[]):
-        """ Create tables if they don't exist.\n
+        """ Create tables if they don't exist.
+        
         :param tableStatements: Each statement should be
         in the form 'tableName(columnDefinitions)'"""
         if len(tableStatements) > 0:
@@ -122,14 +131,17 @@ class DataBased:
     @_connect
     def count(self, table:str, columnRows:list[tuple]|dict=None, 
               exactMatch:bool=True)->int:
-        """ Return number of items in table.\n
+        """ Return number of items in table.
+        
         :param columnRows: Can be a list of 2-tuples where each
         tuple is (columnName, rowValue) or a dictionary where
         keys are column names and values are row values.
-        If None, all rows from the table will be counted.\n
+        If None, all rows from the table will be counted.
+        
         :param exactMatch: If False, the row value for a give column
         in columnRows will be matched as a substring. Has no effect if
-        columnRows is None.\n"""
+        columnRows is None.
+        """
         statement = f'select count(_rowid_) from {table}'
         try:
             if columnRows:
@@ -142,9 +154,12 @@ class DataBased:
     
     @_connect
     def addToTable(self, table:str, values:tuple[any], columns:tuple[str]=None):
-        """ Add row of values to table.\n
-        :param table: The table to insert into.\n
-        :param values: A tuple of values to be inserted into the table.\n
+        """ Add row of values to table.
+        
+        :param table: The table to insert into.
+        
+        :param values: A tuple of values to be inserted into the table.
+        
         :param columns: If None, values param is expected to supply
         a value for every column in the table. If columns is
         provided, it should contain the same number of elements as values."""
@@ -170,12 +185,15 @@ class DataBased:
                         exactMatch:bool=True)->list[dict]:
         """ Returns rows from table as a list of dictionaries
         where the key-value pairs of the dictionaries are
-        column name: row value.\n
+        column name: row value.
+        
         :param columnRows: Can be a list of 2-tuples where each
         tuple is (columnName, rowValue) or a dictionary where
-        keys are column names and values are row values.\n
+        keys are column names and values are row values.
+        
         :param exactMatch: If False, the rowValue for a give column
-        will be matched as a substring.\n"""
+        will be matched as a substring.
+        """
         statement = f'select * from {table}'
         matches = []
         if not columnRows:
@@ -187,13 +205,17 @@ class DataBased:
     
     @_connect
     def delete(self, table:str, columnRows:list[tuple]|dict, exactMatch:bool=True)->int:
-        """ Delete records from table.\n
-        Returns number of deleted records.\n
+        """ Delete records from table.
+        
+        Returns number of deleted records.
+        
         :param columnRows: Can be a list of 2-tuples where each
         tuple is (columnName, rowValue) or a dictionary where
-        keys are column names and values are row values.\n
+        keys are column names and values are row values.
+        
         :param exactMatch: If False, the rowValue for a give column
-        will be matched as a substring.\n"""
+        will be matched as a substring.
+        """
         numMatches = self.count(table, columnRows, exactMatch)
         conditions = self._getConditions(columnRows, exactMatch)
         try:
@@ -206,12 +228,16 @@ class DataBased:
     
     @_connect
     def update(self, table:str, columnRows:list[tuple], columnToUpdate:str, newValue:any)->bool:
-        """ Update row value for entry matched with columnRows.\n
+        """ Update row value for entry matched with columnRows.
+        
         :param columnRows: Can be a list of 2-tuples where each
         tuple is (columnName, rowValue) or a dictionary where
-        keys are column names and values are row values.\n
-        :param columnToUpdate: The column to be updated in the matched row.\n
-        :param newValue: The new value to insert.\n
+        keys are column names and values are row values.
+        
+        :param columnToUpdate: The column to be updated in the matched row.
+        
+        :param newValue: The new value to insert.
+        
         Return True if successful, False if not."""
         conditions = self._getConditions(columnRows)
         try: 
@@ -229,10 +255,13 @@ class DataBased:
 
 def dataToString(data:list[dict], maxColWidths:int|list[int|None]=None, sortKey:str=None)->str:
     """ Uses tabulate to produce pretty string output
-    from a list of dictionaries.\n
-    :param data: Assumes all dictionaries in list have the same set of keys.\n
+    from a list of dictionaries.
+    
+    :param data: Assumes all dictionaries in list have the same set of keys.
+    
     :param maxColWidths: If None, the max width before wrapping will be set 
-    according to the current terminal width.\n
+    according to the current terminal width.
+    
     :param sortKey: Optional dictionary key to sort data with."""
     if not maxColWidths:
         terminalWidth = os.get_terminal_size().columns
