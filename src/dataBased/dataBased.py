@@ -34,6 +34,7 @@ class DataBased:
         self.dbName = Path(dbPath).name
         self._loggerInit(encoding=loggerEncoding, messageFormat=loggerMessageFormat)
         self.connectionOpen = False
+        self.createManager()
 
     def __enter__(self):
         self.open()
@@ -41,6 +42,18 @@ class DataBased:
 
     def __exit__(self, exceptionType, exceptionValue, exceptionTraceback):
         self.close()
+
+    def createManager(self):
+        """Create dbManager.py and dbManagerLoop.py in
+        the same directory as the database file if they don't exist."""
+        managerTemplate = Path(__file__).parent / "dbManager.py"
+        loopTemplate = Path(__file__).parent / "dbManagerLoop.py"
+        managerPath = self.dbPath.parent / "dbManager.py"
+        loopPath = self.dbPath.parent / "dbManagerLoop.py"
+        if not managerPath.exists():
+            managerPath.write_text(managerTemplate.read_text())
+        if not loopPath.exists():
+            loopPath.write_text(loopTemplate.read_text())
 
     def open(self):
         """Open connection to db."""
@@ -93,15 +106,23 @@ class DataBased:
             self.logger.addHandler(handler)
             self.logger.setLevel(logging.INFO)
 
-    def _getDict(self, table: str, values: list) -> dict:
+    def _getDict(
+        self, table: str, values: list, columnsToReturn: list[str] = None
+    ) -> dict:
         """Converts the values of a row into a dictionary with column names as keys.
 
         :param table: The table that values were pulled from.
 
         :param values: List of values expected to be the same quantity
-        and in the same order as the column names of table."""
+        and in the same order as the column names of table.
+
+        :param columnsToReturn: An optional list of column names.
+        If given, only these columns will be included in the returned dictionary.
+        Otherwise all columns and values are returned."""
         return {
-            column: value for column, value in zip(self.getColumnNames(table), values)
+            column: value
+            for column, value in zip(self.getColumnNames(table), values)
+            if not columnsToReturn or column in columnsToReturn
         }
 
     def _getConditions(
@@ -228,6 +249,7 @@ class DataBased:
         matchCriteria: list[tuple] | dict = None,
         exactMatch: bool = True,
         sortByColumn: str = None,
+        columnsToReturn: list[str] = None,
     ) -> list[dict]:
         """Returns rows from table as a list of dictionaries
         where the key-value pairs of the dictionaries are
@@ -241,6 +263,11 @@ class DataBased:
         will be matched as a substring.
 
         :param sortByColumn: A column name to sort the results by.
+
+        :param columnsToReturn: Optional list of column names.
+        If provided, the dictionaries returned by getRows() will
+        only contain the provided columns. Otherwise every column
+        in the row is returned.
         """
         statement = f"select * from {table}"
         matches = []
@@ -252,10 +279,41 @@ class DataBased:
             )
         matches = self.cursor.fetchall()
         if not sortByColumn:
-            return [self._getDict(table, match) for match in matches]
+            return [self._getDict(table, match, columnsToReturn) for match in matches]
         else:
-            results = [self._getDict(table, match) for match in matches]
+            results = [
+                self._getDict(table, match, columnsToReturn) for match in matches
+            ]
             return sorted(results, key=lambda x: x[sortByColumn])
+
+    @_connect
+    def find(
+        self, table: str, queryString: str, columns: list[str] = None
+    ) -> list[dict]:
+        """Search for rows that contain queryString as a substring
+        of any column.
+
+        :param table: The table to search.
+
+        :param queryString: The substring to search for in all columns.
+
+        :param columns: A list of columns to search for queryString.
+        If None, all columns in the table will be searched.
+        """
+        results = []
+        if not columns:
+            columns = self.getColumnNames(table)
+        for column in columns:
+            results.extend(
+                [
+                    row
+                    for row in self.getRows(
+                        table, [(column, queryString)], exactMatch=False
+                    )
+                    if row not in results
+                ]
+            )
+        return results
 
     @_connect
     def delete(
@@ -277,13 +335,11 @@ class DataBased:
         try:
             self.cursor.execute(f"delete from {table} where {conditions}")
             self.logger.info(
-                f'Deleted {numMatches} from "{table}" with conditions {conditions}".'
+                f'Deleted {numMatches} from "{table}" where {conditions}".'
             )
             return numMatches
         except Exception as e:
-            self.logger.debug(
-                f'Error deleting from "{table}" with conditions {conditions}.\n{e}'
-            )
+            self.logger.debug(f'Error deleting from "{table}" where {conditions}.\n{e}')
             return 0
 
     @_connect
@@ -292,7 +348,7 @@ class DataBased:
         table: str,
         columnToUpdate: str,
         newValue: Any,
-        matchCriteria: list[tuple] = None,
+        matchCriteria: list[tuple] | dict = None,
     ) -> bool:
         """Update row value for entry matched with matchCriteria.
 
