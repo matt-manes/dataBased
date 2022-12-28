@@ -44,16 +44,12 @@ class DataBased:
         self.close()
 
     def createManager(self):
-        """Create dbManager.py and dbManagerLoop.py in
-        the same directory as the database file if they don't exist."""
+        """Create dbManager.py in the same directory
+        as the database file if they don't exist."""
         managerTemplate = Path(__file__).parent / "dbManager.py"
-        loopTemplate = Path(__file__).parent / "dbManagerLoop.py"
         managerPath = self.dbPath.parent / "dbManager.py"
-        loopPath = self.dbPath.parent / "dbManagerLoop.py"
         if not managerPath.exists():
             managerPath.write_text(managerTemplate.read_text())
-        if not loopPath.exists():
-            loopPath.write_text(loopTemplate.read_text())
 
     def open(self):
         """Open connection to db."""
