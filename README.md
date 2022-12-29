@@ -18,8 +18,8 @@ Usage:<br>
 <pre>
 from dataBased import DataBased
 from datetime import datetime
-#if the .db file specified doesn't exist, it will be created
-#a log file with the same name will be generated and stored in the same directory
+# if the .db file specified doesn't exist, it will be created
+# a log file with the same name will be generated and stored in the same directory
 from dataBased import DataBased, dataToString
 from datetime import datetime
 
