@@ -54,7 +54,9 @@ def getArgs(command: str) -> argparse.Namespace:
         nargs="*",
         default=[],
         help="""Limits commands to a specific list of tables.
-        Optional for some commands, required for others.""",
+        Optional for some commands, required for others.
+        If this is the only arg given (besides -db if not already set),
+        the whole table will be printed to the terminal.""",
     )
 
     parser.add_argument(
@@ -64,7 +66,10 @@ def getArgs(command: str) -> argparse.Namespace:
         nargs="*",
         default=[],
         help=""" Limits commands to a specific list of columns.
-        Optional for some commands, required for others. """,
+        Optional for some commands, required for others.
+        If this and -t are the only args given 
+        (besides -db if not already set), the whole table will be printed
+        to the terminal, but with only the columns provided with this arg.""",
     )
 
     parser.add_argument(
@@ -215,13 +220,13 @@ if __name__ == "__main__":
                 dbName = args.dbName
             with DataBased(dbPath=dbName) as db:
                 if args.info:
-                    info(args)
+                    info()
                 elif args.find:
-                    find(args)
+                    find()
                 elif args.delete:
-                    delete(args)
+                    delete()
                 elif args.update:
-                    update(args)
+                    update()
                 else:
                     printTable()
         except KeyboardInterrupt:
