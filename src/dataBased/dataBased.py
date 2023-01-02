@@ -246,7 +246,8 @@ class DataBased:
         exactMatch: bool = True,
         sortByColumn: str = None,
         columnsToReturn: list[str] = None,
-    ) -> list[dict]:
+        valuesOnly: bool = False,
+    ) -> tuple[dict] | tuple[tuple]:
         """Returns rows from table as a list of dictionaries
         where the key-value pairs of the dictionaries are
         column name: row value.
@@ -264,6 +265,11 @@ class DataBased:
         If provided, the dictionaries returned by getRows() will
         only contain the provided columns. Otherwise every column
         in the row is returned.
+
+        :param valuesOnly: Return the results as a tuple of tuples
+        instead of a tuple of dictionaries that have column names as keys.
+        The results will still be sorted according to sortByColumn if
+        one is provided.
         """
         statement = f"select * from {table}"
         matches = []
@@ -274,18 +280,20 @@ class DataBased:
                 f"{statement} where {self._getConditions(matchCriteria, exactMatch)}"
             )
         matches = self.cursor.fetchall()
-        if not sortByColumn:
-            return [self._getDict(table, match, columnsToReturn) for match in matches]
+        results = tuple(
+            self._getDict(table, match, columnsToReturn) for match in matches
+        )
+        if sortByColumn:
+            results = tuple(sorted(results, key=lambda x: x[sortByColumn]))
+        if valuesOnly:
+            return tuple(tuple(row.values()) for row in results)
         else:
-            results = [
-                self._getDict(table, match, columnsToReturn) for match in matches
-            ]
-            return sorted(results, key=lambda x: x[sortByColumn])
+            return results
 
     @_connect
     def find(
         self, table: str, queryString: str, columns: list[str] = None
-    ) -> list[dict]:
+    ) -> tuple[dict]:
         """Search for rows that contain queryString as a substring
         of any column.
 
@@ -309,7 +317,7 @@ class DataBased:
                     if row not in results
                 ]
             )
-        return results
+        return tuple(results)
 
     @_connect
     def delete(
