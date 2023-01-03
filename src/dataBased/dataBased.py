@@ -54,7 +54,9 @@ class DataBased:
     def open(self):
         """Open connection to db."""
         self.connection = sqlite3.connect(
-            self.dbPath, detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
+            self.dbPath,
+            detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES,
+            timeout=10,
         )
         self.connection.execute("pragma foreign_keys = 1")
         self.cursor = self.connection.cursor()
