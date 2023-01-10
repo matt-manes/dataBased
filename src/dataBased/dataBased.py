@@ -431,13 +431,19 @@ class DataBased:
             self.logger.error(f'Failed to add column "{column}" to "{table}" table.')
 
 
-def dataToString(data: list[dict], sortKey: str = None) -> str:
+def dataToString(
+    data: list[dict], sortKey: str = None, wrapToTerminal: bool = True
+) -> str:
     """Uses tabulate to produce pretty string output
     from a list of dictionaries.
 
     :param data: Assumes all dictionaries in list have the same set of keys.
 
-    :param sortKey: Optional dictionary key to sort data with."""
+    :param sortKey: Optional dictionary key to sort data with.
+
+    :param wrapToTerminal: If True, the table width will be wrapped
+    to fit within the current terminal window. Set to False
+    if the output is going into something like a txt file."""
     if len(data) == 0:
         return ""
     if sortKey:
@@ -445,27 +451,30 @@ def dataToString(data: list[dict], sortKey: str = None) -> str:
     for i, d in enumerate(data):
         for k in d:
             data[i][k] = str(data[i][k])
-    terminalWidth = os.get_terminal_size().columns
-    maxColWidths = terminalWidth
-    """ Reducing the column width by tabulating one row at a time
-    and then reducing further by tabulating the whole set proved to be 
-    faster than going straight to tabulating the whole set and reducing
-    the column width."""
-    tooWide = True
-    while tooWide and maxColWidths > 1:
-        for i, row in enumerate(data):
-            output = tabulate(
-                [row],
-                headers="keys",
-                disable_numparse=True,
-                tablefmt="grid",
-                maxcolwidths=maxColWidths,
-            )
-            if output.index("\n") > terminalWidth:
-                maxColWidths -= 2
-                tooWide = True
-                break
-            tooWide = False
+    if wrapToTerminal:
+        terminalWidth = os.get_terminal_size().columns
+        maxColWidths = terminalWidth
+        """ Reducing the column width by tabulating one row at a time
+        and then reducing further by tabulating the whole set proved to be 
+        faster than going straight to tabulating the whole set and reducing
+        the column width."""
+        tooWide = True
+        while tooWide and maxColWidths > 1:
+            for i, row in enumerate(data):
+                output = tabulate(
+                    [row],
+                    headers="keys",
+                    disable_numparse=True,
+                    tablefmt="grid",
+                    maxcolwidths=maxColWidths,
+                )
+                if output.index("\n") > terminalWidth:
+                    maxColWidths -= 2
+                    tooWide = True
+                    break
+                tooWide = False
+    else:
+        maxColWidths = None
     output = tabulate(
         data,
         headers="keys",
@@ -474,14 +483,15 @@ def dataToString(data: list[dict], sortKey: str = None) -> str:
         maxcolwidths=maxColWidths,
     )
     # trim max column width until the output string is less wide than the current terminal width.
-    while output.index("\n") > terminalWidth and maxColWidths > 1:
-        maxColWidths -= 2
-        maxColWidths = max(1, maxColWidths)
-        output = tabulate(
-            data,
-            headers="keys",
-            disable_numparse=True,
-            tablefmt="grid",
-            maxcolwidths=maxColWidths,
-        )
+    if wrapToTerminal:
+        while output.index("\n") > terminalWidth and maxColWidths > 1:
+            maxColWidths -= 2
+            maxColWidths = max(1, maxColWidths)
+            output = tabulate(
+                data,
+                headers="keys",
+                disable_numparse=True,
+                tablefmt="grid",
+                maxcolwidths=maxColWidths,
+            )
     return output

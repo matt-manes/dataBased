@@ -83,6 +83,14 @@ def getArgs(command: str) -> argparse.Namespace:
     )
 
     parser.add_argument(
+        "-sco",
+        "--showCountOnly",
+        action="store_true",
+        help=""" Show the number of results returned by -f/--find,
+        but don't print the results to the terminal.""",
+    )
+
+    parser.add_argument(
         "-d",
         "--delete",
         type=str,
@@ -153,7 +161,8 @@ def find():
             )
         else:
             print(f"{len(results)} results for '{args.find}' in '{table}' table:")
-        print(dataToString(results))
+        if not args.showCountOnly:
+            print(dataToString(results))
         print()
 
 
